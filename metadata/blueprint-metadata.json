@@ -1,0 +1,207 @@
+{
+  "name": "LLM Inference Blueprint",
+  "description": "vLLM-backed LLM inference operator with shielded billing, OpenAI-compatible HTTP serving, and on-chain inference jobs.",
+  "author": "Tangle Network",
+  "category": "AI Inference",
+  "image": null,
+  "website": "https://tangle.tools",
+  "codeRepository": "https://github.com/tangle-network/llm-inference-blueprint",
+  "docs": "https://github.com/tangle-network/llm-inference-blueprint#readme",
+  "integrity": null,
+  "blueprintUi": {
+    "displayName": "LLM Inference",
+    "description": "Launch and monitor vLLM-backed text generation services with model, pricing, spend-auth, and request ledger views.",
+    "requestedSlug": "llm-inference",
+    "publisher": {
+      "name": "Tangle Network",
+      "namespace": "tangle",
+      "verified": false
+    },
+    "resources": {
+      "serviceLabel": "Inference service",
+      "itemLabel": "Completion",
+      "itemRoute": "runs"
+    },
+    "surfaces": [
+      "generic-overview",
+      "service-explorer",
+      "service-console",
+      "actions-panel",
+      "resources",
+      "metrics",
+      "permissions"
+    ],
+    "theme": {
+      "badgeLabel": "vLLM hosted inference",
+      "accentColor": "#2563EB",
+      "secondaryColor": "#172554",
+      "icon": "spark"
+    },
+    "overviewCards": [
+      {
+        "id": "dual-paths",
+        "kind": "callout",
+        "title": "On-chain + x402 HTTP",
+        "description": "Submit inference jobs on Tangle for verifiable execution, or call /v1/chat/completions directly with x402 spend authorization for fast anonymous inference.",
+        "tone": "success"
+      },
+      {
+        "id": "model-config",
+        "kind": "checklist",
+        "title": "Operator setup",
+        "items": [
+          "Single vLLM instance per operator",
+          "OpenAI-compatible API conformance",
+          "Token-based billing (input + output)",
+          "Per-model cost configuration"
+        ],
+        "tone": "info"
+      },
+      {
+        "id": "gpu-coverage",
+        "kind": "stat",
+        "title": "Inference throughput",
+        "description": "Tokens generated per second, measured across completion requests.",
+        "value": "auto",
+        "tone": "neutral"
+      }
+    ],
+    "actions": [
+      {
+        "id": "run-inference",
+        "label": "Run inference",
+        "description": "Submit a text prompt via the on-chain Tangle job path. Output is verifiable on-chain with prompt/completion token accounting.",
+        "target": "service",
+        "submitLabel": "Generate",
+        "fields": [
+          {
+            "key": "prompt",
+            "label": "Prompt",
+            "input": "textarea",
+            "required": true,
+            "placeholder": "Explain LLM tokenization concisely."
+          },
+          {
+            "key": "max_tokens",
+            "label": "Max output tokens",
+            "input": "number",
+            "required": true,
+            "placeholder": "256"
+          },
+          {
+            "key": "temperature",
+            "label": "Temperature (\u00d7 1000)",
+            "input": "number",
+            "required": false,
+            "placeholder": "700"
+          }
+        ]
+      },
+      {
+        "id": "provision-service",
+        "label": "Provision LLM service",
+        "description": "Deploy a new inference service endpoint with a chosen model, max token limit, and optional TEE attestation requirement.",
+        "target": "service",
+        "submitLabel": "Deploy",
+        "fields": [
+          {
+            "key": "model_id",
+            "label": "Model ID (HuggingFace path)",
+            "input": "text",
+            "required": true,
+            "placeholder": "meta-llama/Llama-3.1-8B-Instruct"
+          },
+          {
+            "key": "max_tokens",
+            "label": "Service max output tokens",
+            "input": "number",
+            "required": true,
+            "placeholder": "2048"
+          },
+          {
+            "key": "tee_requirement",
+            "label": "TEE attestation",
+            "input": "select",
+            "required": true,
+            "options": [
+              {
+                "label": "Optional",
+                "value": "optional"
+              },
+              {
+                "label": "Required",
+                "value": "required"
+              },
+              {
+                "label": "None",
+                "value": "none"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "resourceViews": [
+      {
+        "id": "completion-ledger",
+        "title": "Completion ledger",
+        "kind": "table",
+        "target": "resource",
+        "defaultSort": "updated_at:desc",
+        "columns": [
+          {
+            "key": "request_id",
+            "label": "Request",
+            "emphasis": true
+          },
+          {
+            "key": "model",
+            "label": "Model"
+          },
+          {
+            "key": "tokens",
+            "label": "Tokens"
+          },
+          {
+            "key": "latency",
+            "label": "Latency"
+          },
+          {
+            "key": "updated_at",
+            "label": "Updated"
+          }
+        ]
+      }
+    ],
+    "modules": [
+      {
+        "module": "metrics-overview",
+        "slot": "overview",
+        "metricKeys": [
+          "tokens_per_second",
+          "latency_p95",
+          "success_rate"
+        ]
+      },
+      {
+        "module": "service-health",
+        "slot": "sidebar",
+        "metricKeys": [
+          "gpu_ready",
+          "model_loaded",
+          "spend_auth_ready"
+        ]
+      },
+      {
+        "module": "resource-events",
+        "slot": "resources",
+        "eventKinds": [
+          "model_loaded",
+          "inference_submitted",
+          "completion_returned",
+          "spend_authorized"
+        ]
+      }
+    ]
+  }
+}
