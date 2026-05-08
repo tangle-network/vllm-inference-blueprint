@@ -20,7 +20,13 @@ checksum = "b5be24beb5e4dab5e42221b2ad1288b64c826bee5ee71b6159ba93ffe86f14d4"
 integrity = "3874463846ab995a6a9a88412913cacec6144f7605daa1af57c2d8bf3f210b13"
 
 [[dependencies]]
+name = "shielded-payment-gateway"
+version = "0.1.0"
+git = "https://github.com/tangle-network/shielded-payment-gateway.git"
+rev = "eaab84c"
+
+[[dependencies]]
 name = "tnt-core"
-version = "0.10.4"
+version = "0.13.0"
 git = "https://github.com/tangle-network/tnt-core.git"
-rev = "74c67d91dc19fadadfae6eafdc80c5e9f7c11caf"
+rev = "5201cf08bbe64238f0533d113840d7280afdaa08"
