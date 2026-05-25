@@ -679,6 +679,10 @@ async fn operator_info(State(state): State<AppState>) -> Json<serde_json::Value>
         },
         "billing_required": state.billing_config.billing_required,
         "payment_token": state.billing_config.payment_token_address,
+        // Payment surface, so clients can self-configure the ShieldedCredits
+        // EIP-712 domain (verifyingContract + chainId) with no hardcoding.
+        "shielded_credits": state.tangle_config.shielded_credits,
+        "chain_id": state.tangle_config.chain_id,
     }))
 }
 

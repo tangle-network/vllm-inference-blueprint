@@ -12,3 +12,6 @@ contracts/dependencies/
 .DS_Store
 .tangle/
 .foreman/
+
+# operator runtime nonce store
+data/
