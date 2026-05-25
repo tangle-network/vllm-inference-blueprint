@@ -11,3 +11,4 @@ contracts/dependencies/
 !.env.example
 .DS_Store
 .tangle/
+.foreman/
