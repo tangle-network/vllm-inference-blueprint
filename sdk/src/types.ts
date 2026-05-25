@@ -1,3 +1,5 @@
+import type { Address, Hex, TypedDataDomain } from "viem";
+
 /** Chat message in OpenAI format */
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -6,6 +8,7 @@ export interface ChatMessage {
 
 /** Options for a chat completion request */
 export interface ChatOptions {
+  model?: string;
   maxTokens?: number;
   temperature?: number;
   topP?: number;
@@ -14,7 +17,7 @@ export interface ChatOptions {
   stop?: string[];
 }
 
-/** Response from chat completion */
+/** Response from a non-streaming chat completion */
 export interface ChatCompletionResponse {
   id: string;
   object: string;
@@ -36,7 +39,7 @@ export interface Usage {
   total_tokens: number;
 }
 
-/** Model listing */
+/** Model listing (`/v1/models`) */
 export interface ModelInfo {
   id: string;
   object: string;
@@ -48,73 +51,140 @@ export interface ModelList {
   data: ModelInfo[];
 }
 
-/** Operator info from the BSM contract */
+/** Operator self-description (`/v1/operator`) */
 export interface OperatorInfo {
-  address: string;
+  operator: Address;
   model: string;
-  gpuCount: number;
-  totalVramMib: number;
-  gpuModel: string;
-  endpoint: string;
-  active: boolean;
+  pricing: {
+    price_per_input_token: number;
+    price_per_output_token: number;
+    currency: string;
+  };
+  gpu: {
+    count: number;
+    min_vram_mib: number;
+    model: string | null;
+    detected: unknown;
+  };
+  server: {
+    max_concurrent_requests: number;
+    max_context_length: number;
+  };
+  billing_required: boolean;
+  payment_token: string | null;
 }
 
-/** Model pricing config from the BSM contract */
-export interface ModelConfig {
-  maxContextLen: number;
-  pricePerInputToken: bigint;
-  pricePerOutputToken: bigint;
-  minGpuVramMib: number;
-  enabled: boolean;
-}
-
-/** ShieldedCredits spend authorization */
+/**
+ * A signed ShieldedCredits spend authorization. Field order and types mirror
+ * `ShieldedCredits.SPEND_TYPEHASH` exactly — changing any of this breaks
+ * on-chain recovery and the operator's signature check.
+ */
 export interface SpendAuth {
-  commitment: string;
+  commitment: Hex;
   serviceId: bigint;
   jobIndex: number;
   amount: bigint;
-  operator: string;
+  operator: Address;
   nonce: bigint;
   expiry: bigint;
-  signature: string;
+  signature: Hex;
 }
 
-/** Credit account state */
+/**
+ * Wire shape the operator parses (`SpendAuthPayload`, camelCase, numbers as
+ * strings for bigint safety). This is what goes in the request body's
+ * `spend_auth` field or the `X-Payment-Signature` header.
+ */
+export interface SpendAuthPayload {
+  commitment: Hex;
+  serviceId: number;
+  jobIndex: number;
+  amount: string;
+  operator: Address;
+  nonce: number;
+  expiry: number;
+  signature: Hex;
+}
+
+/** On-chain credit account state (`getAccount`). */
 export interface CreditAccount {
-  spendingKey: string;
-  token: string;
+  spendingKey: Address;
+  token: Address;
   balance: bigint;
   totalFunded: bigint;
   totalSpent: bigint;
   nonce: bigint;
 }
 
-/** Client configuration */
+/**
+ * EIP-712 typed-data bundle for a SpendAuthorization, in the shape viem's
+ * `signTypedData` (and wagmi's, and the Tangle parent bridge's) expect. The
+ * SDK builds this; any signer can fulfill it.
+ */
+export interface SpendAuthTypedData {
+  domain: TypedDataDomain;
+  types: {
+    SpendAuthorization: { name: string; type: string }[];
+  };
+  primaryType: "SpendAuthorization";
+  message: {
+    commitment: Hex;
+    serviceId: bigint;
+    jobIndex: number;
+    amount: bigint;
+    operator: Address;
+    nonce: bigint;
+    expiry: bigint;
+  };
+}
+
+/**
+ * Pluggable SpendAuth signer. `account` is the address that must be recovered
+ * on-chain (i.e. the credit account's `spendingKey`); `signTypedData` produces
+ * the EIP-712 signature. A local ephemeral key, wagmi, or the Tangle parent
+ * bridge can all implement this.
+ */
+export interface SpendAuthSigner {
+  account: Address;
+  signTypedData: (typedData: SpendAuthTypedData) => Promise<Hex>;
+}
+
+/** An unsigned EVM transaction request (funding flow). */
+export interface TxRequest {
+  to: Address;
+  data: Hex;
+  value: bigint;
+}
+
+/** Client configuration. */
 export interface InferenceClientConfig {
   /** Operator HTTP endpoint URL */
   operatorUrl: string;
-
-  /** ShieldedCredits contract address */
-  shieldedCreditsAddress: string;
-
-  /** Chain ID for EIP-712 domain */
+  /** ShieldedCredits contract address (EIP-712 verifyingContract) */
+  shieldedCreditsAddress: Address;
+  /** Chain ID for the EIP-712 domain */
   chainId: number;
-
-  /** Credit account commitment (keccak256(spendingKey, salt)) */
-  commitment: string;
-
+  /** Credit account commitment */
+  commitment: Hex;
   /** Service ID on Tangle */
   serviceId: bigint;
-
-  /** Operator's on-chain address (for SpendAuth designation) */
-  operatorAddress: string;
-
-  /** Spending key private key (ephemeral, for signing SpendAuths) */
-  spendingKeyPrivate: string;
+  /** Operator's on-chain address (SpendAuth designated recipient) */
+  operatorAddress: Address;
+  /** Signer for spend authorizations (ephemeral spending key) */
+  signer: SpendAuthSigner;
+  /** Default model (falls back to operator default if unset) */
+  model?: string;
+  /** Per-input-token price (wei) for cost estimation */
+  pricePerInputToken?: bigint;
+  /** Per-output-token price (wei) for cost estimation */
+  pricePerOutputToken?: bigint;
+  /** SpendAuth validity window in seconds (default 300) */
+  expirySeconds?: number;
+  /** Inject a fetch impl (tests / non-browser). Defaults to global fetch. */
+  fetchImpl?: typeof fetch;
 }
 
-/** Error response from operator */
+/** Error response envelope from the operator. */
 export interface ErrorResponse {
   error: {
     message: string;

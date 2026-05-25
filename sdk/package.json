@@ -1,22 +1,41 @@
 {
   "name": "@tangle-network/llm-inference-sdk",
-  "version": "0.1.0",
-  "description": "Client SDK for Tangle LLM inference blueprint with ShieldedCredits billing",
+  "version": "0.2.0",
+  "description": "Client SDK for the Tangle vLLM inference blueprint with ShieldedCredits billing (viem)",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
-    "lint": "eslint src/"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./wagmi": {
+      "types": "./dist/wagmi.d.ts",
+      "import": "./dist/wagmi.js"
+    }
   },
-  "dependencies": {
-    "ethers": "^6.13.0",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@wagmi/core": "^2.0.0",
     "viem": "^2.21.0"
   },
+  "peerDependenciesMeta": {
+    "@wagmi/core": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@wagmi/core": "^2.16.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.6.0",
-    "vitest": "^2.0.0",
-    "@types/node": "^22.0.0"
+    "viem": "^2.21.0",
+    "vitest": "^2.0.0"
   },
   "files": [
     "dist/"
