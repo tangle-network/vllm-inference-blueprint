@@ -212,17 +212,36 @@ impl BackgroundService for InferenceServer {
         let config = self.config.clone();
 
         tokio::spawn(async move {
-            // 1. Start the vLLM subprocess
-            let vllm_handle = match VllmProcess::spawn(config.clone()).await {
-                Ok(h) => Arc::new(h),
-                Err(e) => {
-                    tracing::error!(error = %e, "failed to spawn vLLM");
-                    let _ = tx.send(Err(RunnerError::Other(e.to_string().into())));
-                    return;
+            // 1. Start the inference backend: either spawn a vLLM subprocess,
+            //    or (when configured external) connect to an already-running
+            //    OpenAI-compatible server at host:port (cli-bridge, llama.cpp,
+            //    …) — the latter needs no GPU and is used for local e2e.
+            let vllm_handle = if config.vllm.external {
+                tracing::info!(
+                    host = %config.vllm.host,
+                    port = config.vllm.port,
+                    "connecting to external OpenAI-compatible backend (no subprocess)"
+                );
+                match VllmProcess::connect(config.clone()) {
+                    Ok(h) => Arc::new(h),
+                    Err(e) => {
+                        tracing::error!(error = %e, "failed to connect to external backend");
+                        let _ = tx.send(Err(RunnerError::Other(e.to_string().into())));
+                        return;
+                    }
+                }
+            } else {
+                match VllmProcess::spawn(config.clone()).await {
+                    Ok(h) => Arc::new(h),
+                    Err(e) => {
+                        tracing::error!(error = %e, "failed to spawn vLLM");
+                        let _ = tx.send(Err(RunnerError::Other(e.to_string().into())));
+                        return;
+                    }
                 }
             };
 
-            tracing::info!("vLLM process started, waiting for readiness");
+            tracing::info!("inference backend started, waiting for readiness");
             if let Err(e) = vllm_handle.wait_ready().await {
                 tracing::error!(error = %e, "vLLM failed to become ready");
                 let _ = tx.send(Err(RunnerError::Other(e.to_string().into())));
@@ -310,6 +329,15 @@ impl BackgroundService for InferenceServer {
                 }
 
                 if !vllm_handle.is_healthy().await {
+                    // An external backend isn't managed by the operator, so we
+                    // can't respawn it — just warn and keep serving (it may
+                    // recover on its own).
+                    if config.vllm.external {
+                        tracing::warn!(
+                            "external inference backend health check failed — not operator-managed, will retry"
+                        );
+                        continue;
+                    }
                     tracing::error!("vLLM health check failed — attempting respawn");
 
                     // Shut down the old process

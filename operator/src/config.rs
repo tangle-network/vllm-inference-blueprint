@@ -78,6 +78,13 @@ pub struct VllmConfig {
     /// Startup timeout in seconds.
     #[serde(default = "default_startup_timeout")]
     pub startup_timeout_secs: u64,
+
+    /// When true, connect to an already-running OpenAI-compatible server at
+    /// `host:port` instead of spawning a vLLM subprocess. Lets the operator
+    /// run against cli-bridge / llama.cpp / any OpenAI-compatible backend with
+    /// no GPU — used for local end-to-end testing.
+    #[serde(default)]
+    pub external: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
