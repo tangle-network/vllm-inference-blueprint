@@ -40,13 +40,10 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: System dependencies
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
-
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          version: '25.x'
-          repo-token: ${{ github.token }}
+        # protobuf-compiler from apt (ubuntu-latest ships 3.21.x) — avoids the
+        # GitHub-API-backed setup-protoc action. This is the protoc version the
+        # operator builds against locally.
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libssl-dev pkg-config
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
